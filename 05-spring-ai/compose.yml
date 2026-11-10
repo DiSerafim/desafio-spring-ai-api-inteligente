@@ -1,3 +1,4 @@
+# 05-spring-ai/compose.yml
 services:
   database:
     image: mysql:9.6
