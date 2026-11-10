@@ -1,85 +1,71 @@
-# DIO Spring Boot - Final Project 05: Spring AI (budgeting)
+# 💰 API de Orçamento Inteligente com Spring Boot & Spring AI
 
-## Introduction
+Desafio final de consolidação arquitetural e integração com inteligência artificial da trilha Spring Boot da DIO. O projeto consiste em uma API inteligente de gerenciamento de orçamento (_budgeting_) capaz de processar comandos financeiros por voz, interpretar intenções utilizando LLMs (OpenAI) e disparar funções de domínio reais de forma acoplada utilizando a arquitetura em camadas (DDD).
 
-This final module applies Spring AI in a budgeting API while preserving the same layered architecture used across the track.
+## 🚀 O que o projeto faz (Fluxo Principal)
 
-The goal is to integrate AI capabilities without bypassing domain and use case boundaries.
+1. **Reconhecimento de Fala (Speech-to-Text):** O cliente envia um arquivo de áudio (`.m4a`) contendo uma instrução financeira por comando de voz.
+2. **Transcrição Dinâmica:** A API usa o `TranscriptionModel` do Spring AI para converter o áudio em texto literal.
+3. **Orquestração por Inteligência Artificial (Tool Calling):** Através do `ChatClient` integrado à LLM, o modelo interpreta o texto e aciona dinamicamente métodos anotados com `@Tool`, mapeando a intenção do usuário para um caso de uso real da aplicação.
+4. **Persistência das Transações:** O caso de uso aciona o domínio, valida a transação e persiste as informações no banco de dados MySQL rodando no Docker.
+5. **Sintetização de Voz (Text-to-Speech):** A API gera uma resposta de confirmação contextualizada, converte o texto final para áudio (`.mp3`) via `TextToSpeechModel` e devolve a resposta sonora para o usuário.
 
-## Code Context
+## ⚙️ Tecnologias Utilizadas
 
-The project processes voice commands to create and query financial transactions.
+- **Java 17** & **Spring Boot 3.x**
+- **Spring AI** (ChatModel, Transcription API e Speech API)
+- **Lombok** (Redução de boilerplate de código)
+- **Spring Data JPA** & **MySQL** (Camada de persistência)
+- **Docker & Docker Compose** (Containerização do banco de dados relacional)
+- **Gradle** (Gerenciador de build e dependências)
 
-Primary flow:
+## 🛠️ Minha Evolução Técnica (Melhoria Implementada)
 
-1. Client uploads an audio file.
-2. Audio is transcribed into text.
-3. The model selects an application tool/use case.
-4. The use case persists or queries transaction data.
-5. The final response is converted to audio.
+**Proteção de Invariantes de Domínio contra Alucinações de IA:**
+Em sistemas orientados por IA Generativa, os modelos de linguagem podem interpretar valores de forma incorreta ou sofrer alucinações (ex: tentar cadastrar uma transação com valor negativo ou zerado a partir de um áudio ambíguo).
 
-## Project Structure
+Para blindar o sistema seguindo os padrões do **Domain-Driven Design (DDD)**, implementei uma **validação defensiva diretamente no construtor da Entidade de Domínio (`Transaction.java`)**. Isso garante que a entidade nunca exista em um estado inválido no ecossistema:
 
-- `src/main/java/dio/budgeting/domain`
-  - Domain model and repository contract.
-- `src/main/java/dio/budgeting/application`
-  - Use cases used by both REST and AI tool calling.
-- `src/main/java/dio/budgeting/infrastructure`
-  - HTTP adapters, JPA adapters, and integration glue.
+```java
+public Transaction(String description, long amount, Category category) {
+    if (amount <= 0) {
+        throw new IllegalArgumentException("O valor da transação deve ser obrigatoriamente maior que zero!");
+    }
+    if (category == null) {
+        throw new IllegalArgumentException("A transação precisa pertencer a uma categoria válida!");
+    }
 
-## Module-Specific Topics
-
-### Speech-to-text
-
-- Uses `TranscriptionModel` for audio transcription.
-- Model settings are configured in `application.properties`.
-
-### Tool calling
-
-- `ChatClient` registers use-case tools.
-- `@Tool` methods expose business capabilities to the model.
-
-### Text-to-speech
-
-- `TextToSpeechModel` produces MP3 output from final text.
-- AI endpoint returns generated audio.
-
-## Spring AI Documentation
-
-- Spring AI Reference: https://docs.spring.io/spring-ai/reference/index.html
-- ChatModel API: https://docs.spring.io/spring-ai/reference/api/chatmodel.html
-- ChatClient API: https://docs.spring.io/spring-ai/reference/api/chatclient.html
-- Tools API: https://docs.spring.io/spring-ai/reference/api/tools.html
-- Audio Transcriptions API: https://docs.spring.io/spring-ai/reference/api/audio/transcriptions.html
-- Audio Speech API: https://docs.spring.io/spring-ai/reference/api/audio/speech.html
-
-## Shared Architecture References
-
-Common architecture concepts are documented in the root README:
-
-- [DDD layers](../README.md#ddd-layered-architecture)
-- [Class vs record](../README.md#java-class-vs-java-record-in-domain-modeling)
-- [Strong typed identifiers](../README.md#strong-typed-identifiers)
-- [Repository pattern](../README.md#repository-pattern)
-- [Use cases and Clean Architecture](../README.md#use-cases-and-clean-architecture)
-- [Docker Compose support](../README.md#docker-compose-support-in-development)
-
-## How to Run
-
-Set your OpenAI API key:
-
-```bash
-export OPENAI_API_KEY="your_api_key_here"
+    this.id = new TransactionId();
+    this.description = (description == null || description.isBlank()) ? "Gasto sem descrição especificada" : description;
+    this.amount = amount;
+    this.category = category;
+}
 ```
 
-Run the application and tests:
+Mesmo que a LLM envie dados corrompidos via _Tool Calling_, a regra de negócio do núcleo da aplicação barra a operação antes que ela chegue à infraestrutura de persistência.
 
-```bash
-./gradlew bootRun
-./gradlew test
-```
+## 🏃 Como Executar a Aplicação
 
-## Notes
+1. Certifique-se de possuir o Docker ativo e suba a infraestrutura do banco de dados na raiz do módulo `05-spring-ai`:
 
-- Educational final project focused on AI plus architectural discipline.
-- External provider integration tests may require active credentials.
+   ```bash
+   docker compose up -d
+   ```
+
+2. Configure as suas credenciais no arquivo `application.properties` ou exporte a sua chave de API da OpenAI no terminal:
+
+   ```bash
+   export OPENAI_API_KEY="sua_chave_da_openai_aqui"
+   ```
+
+3. Compile e execute a aplicação utilizando o Gradle Wrapper:
+   ```bash
+   ./gradlew bootRun
+   ```
+
+## 🧠 O que aprendi neste desafio
+
+- Como acoplar Inteligência Artificial Generativa em sistemas corporativos sem violar as fronteiras arquiteturais do DDD.
+- O poder do **Tool Calling** para permitir que uma LLM execute métodos Java reais com base na fala do usuário.
+- Gerenciamento e controle rigoroso de tipos complexos e primitivos (`long` para tratamento de centavos em finanças).
+- Utilização de fluxos de áudio assíncronos e tratamento de permissões de infraestrutura no Linux (Docker Socket).
