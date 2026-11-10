@@ -14,17 +14,14 @@ public class Transaction {
 
     public Transaction(String description, long amount, Category category) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("O valor da transação deve ser obrigatoriamente maior que zero.");
+            throw new IllegalArgumentException("O valor da transação deve ser obrigatoriamente maior que zero!");
         }
         if (category == null) {
-            throw new IllegalArgumentException("A transação precisa pertencer a uma categoria válida.");
-        }
-        if (description == null || description.isBlank()) {
-            throw new IllegalArgumentException("A descrição da transação não pode estar vazia!");
+            throw new IllegalArgumentException("A transação precisa pertencer a uma categoria válida!");
         }
 
         this.id = new TransactionId();
-        this.description = description;
+        this.description = (description == null || description.isBlank()) ? "Gasto sem descrição especificada" : description;
         this.amount = amount;
         this.category = category;
     }
